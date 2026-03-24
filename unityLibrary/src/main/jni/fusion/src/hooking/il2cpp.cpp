@@ -43,7 +43,7 @@ bool il2cpp_initialize(const char *library_path)
     void *resolved_runtime_invoke = resolve_inner_branch(p_il2cpp_runtime_invoke, 1);
     if (resolved_runtime_invoke != p_il2cpp_runtime_invoke)
     {
-        log_format(LogLevel::INFO, TAG, "Resolved il2cpp_runtime_invoke to inner branch target: 0x{:X}",
+        log_format(LogLevel::DEBUG, TAG, "Resolved il2cpp_runtime_invoke to inner branch target: 0x{:X}",
             reinterpret_cast<uintptr_t>(resolved_runtime_invoke));
         p_il2cpp_runtime_invoke = resolved_runtime_invoke;
     }
@@ -168,7 +168,7 @@ void il2cpp_install_init_hook(il2cpp_init_t hook)
         return;
     }
 
-    log(LogLevel::INFO, TAG, "Successfully hooked il2cpp_init");
+    log(LogLevel::DEBUG, TAG, "Successfully hooked il2cpp_init");
 }
 
 // destroy the il2cpp_init hook if it exists
@@ -183,7 +183,7 @@ void il2cpp_destroy_init_hook()
     DobbyDestroy(p_il2cpp_init);
     init_hook = nullptr;
 
-    log(LogLevel::INFO, TAG, "Successfully destroyed il2cpp_init hook");
+    log(LogLevel::DEBUG, TAG, "Successfully destroyed il2cpp_init hook");
 }
 
 // installs a hook on il2cpp_runtime_invoke
@@ -214,7 +214,7 @@ void il2cpp_install_runtime_invoke_hook(il2cpp_runtime_invoke_t hook)
         return;
     }
 
-    log(LogLevel::INFO, TAG, "Successfully hooked il2cpp_runtime_invoke");
+    log(LogLevel::DEBUG, TAG, "Successfully hooked il2cpp_runtime_invoke");
 }
 
 // destroy the runtime_invoke hook if it exists
@@ -229,5 +229,5 @@ void il2cpp_destroy_runtime_invoke_hook()
     DobbyDestroy(p_il2cpp_runtime_invoke);
     runtime_invoke_hook = nullptr;
 
-    log(LogLevel::INFO, TAG, "Successfully destroyed il2cpp_runtime_invoke hook");
+    log(LogLevel::DEBUG, TAG, "Successfully destroyed il2cpp_runtime_invoke hook");
 }

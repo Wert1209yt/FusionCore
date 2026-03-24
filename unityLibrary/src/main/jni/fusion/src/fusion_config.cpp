@@ -34,7 +34,7 @@ FusionConfig fusion_parse_config(JNIEnv *env, jobject jFusionConfig)
 
 void fusion_print_config(const FusionConfig &config)
 {
-    log_format(LogLevel::INFO, TAG, "Game Library Directory: {}", config.gameLibraryDirectory);
-    log_format(LogLevel::INFO, TAG, "App Library Directory: {}", config.appLibraryDirectory);
-    log_format(LogLevel::INFO, TAG, "Use Original libunity.so: {}", config.useOriginalLibUnity);
+    log_format(LogLevel::DEBUG, TAG, "Game Library Directory: {}", config.gameLibraryDirectory);
+    log_format(LogLevel::DEBUG, TAG, "App Library Directory: {}", config.appLibraryDirectory);
+    log_format(LogLevel::DEBUG, TAG, "Use Original libunity.so: {}", config.useOriginalLibUnity);
 }
