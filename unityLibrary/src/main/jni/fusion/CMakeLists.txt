@@ -13,6 +13,7 @@ set(SOURCE_FILES src/fusion.cpp)
 add_library(fusion SHARED
         src/fusion.cpp
         src/fusion_config.cpp
+        src/utilities/asm.cpp
 )
 
 find_package(JNI REQUIRED)

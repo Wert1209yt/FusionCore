@@ -6,6 +6,8 @@
 #include <libmain.h>
 #include <fusion_config.h>
 
+namespace fs = std::filesystem;
+
 extern "C" JNIEXPORT void JNICALL loadFusion(
         JNIEnv *env,
         jclass thisObject,
@@ -16,11 +18,11 @@ extern "C" JNIEXPORT void JNICALL loadFusion(
 
     FusionConfig config(env, nativeConfig);
 
-    std::filesystem::path gameLibsPath(config.getGameLibraryDirectory());
-    std::filesystem::path appLibsPath(config.getAppLibraryDirectory());
+    fs::path gameLibsPath(config.getGameLibraryDirectory());
+    fs::path appLibsPath(config.getAppLibraryDirectory());
 
-    std::filesystem::path libil2cpp = gameLibsPath / "libil2cpp.so";
-    std::filesystem::path libunity = gameLibsPath / "libunity.so";
+    fs::path libil2cpp = gameLibsPath / "libil2cpp.so";
+    fs::path libunity = gameLibsPath / "libunity.so";
 
     set_override_il2cpp_path(libil2cpp.c_str());
     set_override_unity_path(libunity.c_str());

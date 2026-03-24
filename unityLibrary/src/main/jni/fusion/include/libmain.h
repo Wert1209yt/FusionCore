@@ -1,4 +1,4 @@
-// Copyright (c) XtraCube 2026
+// Copyright (c) 2026 XtraCube
 #ifndef FUSION_LIBMAIN_H
 #define FUSION_LIBMAIN_H
 

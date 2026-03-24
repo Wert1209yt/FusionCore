@@ -1,6 +1,6 @@
 // Copyright (c) 2026 XtraCube
 #include <fusion_config.h>
-#include <java_utils.h>
+#include <utilities/java.h>
 
 FusionConfig::FusionConfig(JNIEnv *env, jobject jFusionConfig)
 {

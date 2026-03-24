@@ -1,6 +1,6 @@
 // Copyright (c) 2026 XtraCube
-#ifndef FUSIONCORE_JAVA_UTILS_H
-#define FUSIONCORE_JAVA_UTILS_H
+#ifndef FUSIONCORE_JAVA_H
+#define FUSIONCORE_JAVA_H
 
 #define GET_JAVA_STRING(javaString, assignment) \
     do { \
@@ -9,4 +9,4 @@
         (env)->ReleaseStringUTFChars(javaString, chars); \
     } while(0);
 
-#endif //FUSIONCORE_JAVA_UTILS_H
+#endif //FUSIONCORE_JAVA_H
