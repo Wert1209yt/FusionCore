@@ -6,6 +6,7 @@
 #include <fusion_config.h>
 #include <hooking/il2cpp.h>
 #include <hooking/safehook.h>
+#include <hooking/allocator.h>
 #include <dotnet.h>
 
 #define TAG "FusionCore"
@@ -28,7 +29,7 @@ int il2cpp_init_hook(char *domain_name)
         setenv("BEPINEX_GAME_ASSEMBLY_PATH", libmain_get_override_il2cpp_path(), 1);
         setenv("FUSION_BEPINEX_PATH", config.bepInExDirectory.c_str(), 1);
         setenv("FUSION_GAME_BINARY", libmain_get_override_il2cpp_path(), 1);
-        setenv("FUSION_GAME_DATA_DIR", config.gameDataDirectory.c_str(), 1);
+        setenv("FUSION_GAME_DATA_DIR", config.appDataDirectory.c_str(), 1);
         setenv("FUSION_APP_DATA_DIR", config.appDataDirectory.c_str(), 1);
         setenv("FUSION_UNITY_VERSION", "2021.3.45f1", 1);
 
@@ -83,20 +84,24 @@ extern "C" JNIEXPORT void JNICALL loadFusion(
         libUnity = appLibsPath / "libunity.so";
     }
 
+    fs::path tempLibIl2Cpp = fs::path(config.appInternalDataDirectory) / "libil2cpp.so";
+
+    allocate_setup_injected(libIl2Cpp.c_str(), tempLibIl2Cpp.c_str(), 1024 * 1024);
+
     // set our custom libmain override paths
-    libmain_set_override_il2cpp_path(libIl2Cpp.c_str());
+    libmain_set_override_il2cpp_path(tempLibIl2Cpp.c_str());
     libmain_set_override_unity_path(libUnity.c_str());
 
     // initialize il2cpp
-    if (!il2cpp_initialize(libIl2Cpp.c_str()))
+    if (!il2cpp_initialize(tempLibIl2Cpp.c_str()))
     {
         log_format(LogLevel::ERROR, TAG, "Failed to initialize il2cpp with path: {}",
-                   libIl2Cpp.c_str());
+                   tempLibIl2Cpp.c_str());
         return;
     }
 
     // initialize safehook
-    if (!safehook_initialize(il2cpp_get_handle(), il2cpp_get_library_base(), nullptr))
+    if (!safehook_initialize(il2cpp_get_handle(), il2cpp_get_library_base(), allocate_injected))
     {
         log(LogLevel::ERROR, TAG, "Failed to initialize SafeHook");
         return;

@@ -9,8 +9,8 @@ struct FusionConfig {
     bool useOriginalLibUnity;
     std::string gameLibraryDirectory;
     std::string appLibraryDirectory;
-    std::string gameDataDirectory;
     std::string appDataDirectory;
+    std::string appInternalDataDirectory;
     std::string bepInExDirectory;
     std::string dotnetDirectory;
 };

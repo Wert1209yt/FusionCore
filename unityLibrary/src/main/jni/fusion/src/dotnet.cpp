@@ -38,6 +38,8 @@ int dotnet_execute_assembly(const DotNetConfig& config)
             config.managedLibsDir.c_str()
     };
 
+    setenv("DOTNET_ReadyToRun", "0", 1);
+
     log(LogLevel::INFO, TAG, "Attempting CoreCLR initialization with W^X disabled");
     // Attempt without W^X first
     setenv("DOTNET_EnableWriteXorExecute", "0", 1);

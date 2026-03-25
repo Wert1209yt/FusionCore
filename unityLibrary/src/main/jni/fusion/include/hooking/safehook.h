@@ -8,7 +8,7 @@
 
 // The allocator function used to allocate code trampolines.
 // It should allocate executable memory and return a pointer to it.
-using allocate_func = void *(*)(void *target, size_t size);
+using allocate_func = void *(*)(void *target, void *base, size_t size);
 
 // Initializes the SafeHook system with the given library handle, base address, and allocator function.
 // if allocator_func is null, safehook will try to use dobby b branches directly.

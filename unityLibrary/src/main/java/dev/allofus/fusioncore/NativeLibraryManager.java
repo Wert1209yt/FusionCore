@@ -3,6 +3,7 @@ package dev.allofus.fusioncore;
 import android.util.Log;
 
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.Objects;
 
 import bitter.jnibridge.JNIBridge;
@@ -12,11 +13,12 @@ import top.canyie.pine.callback.MethodHook;
 public class NativeLibraryManager {
     private static final String TAG = "NativeLibraryManager";
 
-    // Libraries to get from our native library directory
-    private static final String[] FusionLibraries = new String[]{
-            // "unity",
-            "main",
-    };
+    private static final HashMap<String, String> LibraryMap
+            = new HashMap<>();
+
+    public static void mapLibrary(String name, String path) {
+        LibraryMap.put(name, path);
+    }
 
     public static void setupLibraryHooks(FusionConfig config) {
         Method findLibraryMethod = findLibraryMethodViaReflection();
@@ -29,16 +31,17 @@ public class NativeLibraryManager {
         Pine.hook(findLibraryMethod, new MethodHook() {
             @Override
             public void beforeCall(Pine.CallFrame callFrame) {
-                Log.i(TAG, "findLibrary called for " + callFrame.args[0]);
+                var libName = callFrame.args[0].toString();
 
-                for (String libName : FusionLibraries) {
-                    if (Objects.equals(libName, callFrame.args[0])) {
-                        callFrame.setResult(config.appLibraryDirectory + "/lib" + libName + ".so");
-                        return;
-                    }
+                Log.i(TAG, "findLibrary called for " + libName);
+
+                String override = LibraryMap.get(libName);
+                if (override != null) {
+                    Log.i(TAG, "override to " + override);
+                    callFrame.setResult(override);
+                } else {
+                    callFrame.setResult(config.gameLibraryDirectory + "/lib" + callFrame.args[0] + ".so");
                 }
-
-                callFrame.setResult(config.gameLibraryDirectory + "/lib" + callFrame.args[0] + ".so");
             }
 
             @Override

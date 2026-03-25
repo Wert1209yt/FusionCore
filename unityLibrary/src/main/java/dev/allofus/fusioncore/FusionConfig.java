@@ -5,16 +5,16 @@ public class FusionConfig {
     public FusionConfig(
             String gameLibDir,
             String appLibDir,
-            String gameDataDir,
             String appDataDir,
+            String appInternalDataDirectory,
             String bepInExDir,
             String dotnetDir,
             boolean useOriginalLibUnity
     ) {
         this.gameLibraryDirectory = gameLibDir;
         this.appLibraryDirectory = appLibDir;
-        this.gameDataDirectory = gameDataDir;
         this.appDataDirectory = appDataDir;
+        this.appInternalDataDirectory = appInternalDataDirectory;
         this.bepInExDirectory = bepInExDir;
         this.dotnetDirectory = dotnetDir;
         this.useOriginalLibUnity = useOriginalLibUnity;
@@ -29,8 +29,8 @@ public class FusionConfig {
     /// The directory where Fusion's data files are located.
     public String appDataDirectory;
 
-    /// The directory where the game's data files are located.
-    public String gameDataDirectory;
+    /// The directory where Fusion's internal data files are located.
+    public String appInternalDataDirectory;
 
     /// The directory where BepInEx should be installed.
     public String bepInExDirectory;

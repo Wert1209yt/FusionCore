@@ -16,9 +16,11 @@ add_library(fusion SHARED
         src/dotnet.cpp
         src/exports.cpp
         src/logger.cpp
+        src/hooking/allocator.cpp
         src/hooking/il2cpp.cpp
         src/hooking/safehook.cpp
         src/utilities/asm.cpp
+        src/utilities/library.cpp
 )
 
 find_package(JNI REQUIRED)

@@ -6,6 +6,7 @@
 #include <dlfcn.h>
 #include <sys/mman.h>
 #include <bits/sysconf.h>
+#include <mutex>
 
 #define TAG "SafeHook"
 
@@ -16,6 +17,8 @@ static constexpr size_t trampoline_size = 16;
 #elif defined(__arm__)
 static constexpr size_t trampoline_size = 8;
 #endif
+
+static std::mutex hook_mutex;
 
 // The size of a memory page on the target system, which is needed for memory protection operations.
 static const size_t page_size = sysconf(_SC_PAGESIZE);
@@ -148,6 +151,8 @@ bool protect_trampoline(void *trampoline, size_t size, int protection)
 
 void *safehook_create_hook(void *target_function, void *hook_function, bool use_bridge)
 {
+    std::lock_guard<std::mutex> guard(hook_mutex);
+
     if (!target_function || !hook_function)
     {
         log_format(LogLevel::ERROR, TAG, "Invalid parameters! Target: 0x{:X} Hook: 0x{:X}",
@@ -209,7 +214,7 @@ void *safehook_create_hook(void *target_function, void *hook_function, bool use_
             return dobby_hook(target_function, actual_hook, true);
         }
 
-        void *trampoline = allocator(target_function, trampoline_size);
+        void *trampoline = allocator(target_function, reinterpret_cast<void *>(library_base), trampoline_size);
         if (!trampoline)
         {
             log(LogLevel::ERROR, TAG, "Failed to allocate trampoline. Using Dobby as a fallback.");
@@ -257,6 +262,8 @@ void *safehook_create_hook(void *target_function, void *hook_function, bool use_
 
 void safehook_destroy_hook(void *target)
 {
+    std::lock_guard<std::mutex> guard(hook_mutex);
+
     void *offset = reinterpret_cast<void *>(
             reinterpret_cast<uintptr_t>(target) -
             reinterpret_cast<uintptr_t>(library_base)

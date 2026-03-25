@@ -59,18 +59,10 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
             Context gameContext = createPackageContext(TARGET_GAME, CONTEXT_IGNORE_SECURITY);
             m_context = gameContext;
 
-            // Create custom context to redirect stuff
-            CustomContextWrapper wrappedContext = new CustomContextWrapper(gameContext, myContext, this);
-
             boolean useOriginalLibUnity = getIntent().getBooleanExtra("og_libunity", true);
 
-            String gameLibDir = wrappedContext.getApplicationInfo().nativeLibraryDir;
+            String gameLibDir = gameContext.getApplicationInfo().nativeLibraryDir;
             String appLibDir = myContext.getApplicationInfo().nativeLibraryDir;
-
-            File gameDataDir = wrappedContext.getExternalFilesDir(null);
-            if (gameDataDir == null) {
-                gameDataDir = wrappedContext.getFilesDir();
-            }
 
             File appDataDir = myContext.getExternalFilesDir(null);
             if (appDataDir == null) {
@@ -95,8 +87,8 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
             FusionConfig config = new FusionConfig(
                     gameLibDir,
                     appLibDir,
-                    gameDataDir.getAbsolutePath(),
                     appDataDir.getAbsolutePath(),
+                    myContext.getFilesDir().getAbsolutePath(),
                     bepInExDir.getAbsolutePath(),
                     dotnetDir.getAbsolutePath(),
                     useOriginalLibUnity
@@ -105,7 +97,11 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
             ActivityBridge.loadFusion(config);
 
             // Setup native library hooks
+            NativeLibraryManager.mapLibrary("il2cpp", config.appInternalDataDirectory + "/libil2cpp.so");
             NativeLibraryManager.setupLibraryHooks(config);
+
+            // Create custom context to redirect stuff
+            CustomContextWrapper wrappedContext = new CustomContextWrapper(gameContext, myContext, this);
 
             mUnityPlayer = new UnityPlayer(wrappedContext, this);
             UnityPlayer.currentActivity = this;
