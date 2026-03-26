@@ -84,6 +84,9 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
                 appDataDir = getFilesDir();
             }
 
+            // use a subfolder for our target game to avoid conflicts with other games using Fusion
+            appDataDir = new File(appDataDir, TARGET_GAME);
+
             // copy the games Data folder so we can determine Unity version and use metadata
             var copiedData = new File(appDataDir, "Data_copy");
             boolean copied = copyAssets(gameContext.getAssets(), "bin/Data", copiedData);
