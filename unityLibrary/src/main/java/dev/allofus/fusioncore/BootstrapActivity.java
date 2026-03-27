@@ -28,7 +28,7 @@ public class BootstrapActivity extends Activity {
 
     public static final String EXTRA_USE_ORIGINAL_LIBUNITY = "og_libunity";
 
-    public static final String TARGET_PACKAGE = "com.innersloth.spacemafia";
+    public static final String TARGET_PACKAGE = "com.StefMorojna.SpaceflightSimulator";
     public static final String BACKUP_UNITY_VERSION = "2017.0.0";
 
     private static final AtomicBoolean HOOK_INSTALLED = new AtomicBoolean(false);
