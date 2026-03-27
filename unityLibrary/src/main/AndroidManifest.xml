@@ -13,6 +13,7 @@
     <package android:name="com.innersloth.spacemafia" />
     <package android:name="com.abstractsoft.hybridanimals" />
     <package android:name="com.StefMorojna.SpaceflightSimulator" />
+    <package android:name="com.DanVogt.DATAWING" />
   </queries>
   <application android:enableOnBackInvokedCallback="true" android:extractNativeLibs="true"><meta-data android:name="unity.splash-mode" android:value="0" />
     <meta-data android:name="unity.splash-enable" android:value="True" />
