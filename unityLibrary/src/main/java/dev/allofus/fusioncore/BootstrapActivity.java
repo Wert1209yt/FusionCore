@@ -84,7 +84,7 @@ public class BootstrapActivity extends Activity {
         }
 
         try {
-            var launcherClass = getClassLoader().loadClass(launcherClassName);
+            var launcherClass = gameContext.getClassLoader().loadClass(launcherClassName);
 
             var intent = new Intent(this, launcherClass);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);

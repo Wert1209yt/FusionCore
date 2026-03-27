@@ -46,11 +46,11 @@ public class ClassLoaderHooks {
                     // Only attempt fallback if class was not found
                     if (callFrame.getThrowable() instanceof ClassNotFoundException) {
                         String className = (String) callFrame.args[0];
-                        Log.d("ClassLoaderHooks", "afterLoadClass: class not found in default loader: " + className);
+                        Log.d(TAG, "afterLoadClass: class not found in default loader: " + className);
 
                         // Skip fallback if this is already the game classloader
                         if (callFrame.thisObject == gameClassLoader) {
-                            Log.d("ClassLoaderHooks", "Skipping fallback: loader is already game classloader");
+                            Log.d(TAG, "Skipping fallback: loader is already game classloader");
                             return;
                         }
 
@@ -58,16 +58,16 @@ public class ClassLoaderHooks {
                         try {
                             Class<?> gameClass = gameClassLoader.loadClass(className);
                             callFrame.setResult(gameClass);
-                            Log.d("ClassLoaderHooks", "Successfully loaded from game classloader: " + className);
+                            Log.d(TAG, "Successfully loaded from game classloader: " + className);
                         } catch (ClassNotFoundException e) {
-                            Log.d("ClassLoaderHooks", "Class not found in game classloader either: " + className);
+                            Log.d(TAG, "Class not found in game classloader either: " + className);
                         } catch (Exception e) {
                             // Catch any other exceptions to prevent them from propagating to JNI
-                            Log.w("ClassLoaderHooks", "Unexpected error loading class from game classloader: " + className, e);
+                            Log.w(TAG, "Unexpected error loading class from game classloader: " + className, e);
                         }
                     }
                 } catch (Exception e) {
-                    Log.e("ClassLoaderHooks", "Unexpected error in afterCall (CRITICAL)", e);
+                    Log.e(TAG, "Unexpected error in afterCall (CRITICAL)", e);
                 }
             }
         });

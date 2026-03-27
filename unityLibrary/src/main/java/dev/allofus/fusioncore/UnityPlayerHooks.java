@@ -2,9 +2,12 @@ package dev.allofus.fusioncore;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.ContextWrapper;
+import android.util.Log;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 
 import top.canyie.pine.Pine;
@@ -12,8 +15,11 @@ import top.canyie.pine.callback.MethodHook;
 
 public class UnityPlayerHooks {
 
+    public static String TAG = "UnityPlayerHooks";
+
     public static final String[] UnityPlayerClassNames = new String[] {
             "com.unity3d.player.UnityPlayer",
+            "com.unity3d.player.UnityPlayerForGameActivity",
             "com.unity3d.player.UnityPlayerForActivityOrService"
     };
 
@@ -24,29 +30,27 @@ public class UnityPlayerHooks {
         }
 
         // get constructor
-        Constructor<?> constructor = null;
+        ArrayList<Constructor<?>> constructors = new ArrayList<>();
         Class<?> unityPlayerClass = null;
         for (String className : UnityPlayerClassNames) {
             try {
                 unityPlayerClass = classLoader.loadClass(className);
                 for (Constructor<?> ctor : unityPlayerClass.getDeclaredConstructors()) {
-                    if (ctor.getParameterTypes().length == 2 &&
+                    if (ctor.getParameterTypes().length >= 1 &&
                             Context.class.isAssignableFrom(ctor.getParameterTypes()[0])) {
-                        constructor = ctor;
-                        break;
+                        constructors.add(ctor);
                     }
                 }
-
-                constructor.setAccessible(true);
-                break;
             } catch (ClassNotFoundException e) {
                 // Try next class name
             }
         }
 
-        if (constructor == null) {
-            throw new IllegalStateException("Failed to find UnityPlayer constructor");
+        if (unityPlayerClass == null || constructors.isEmpty()) {
+            throw new IllegalStateException("Failed to find UnityPlayer class or constructor");
         }
+
+        Log.i(TAG, "Found UnityPlayer class: " + unityPlayerClass.getName());
 
         ArrayList<Field> activityFields = new ArrayList<>();
         for (Field field : unityPlayerClass.getDeclaredFields()) {
@@ -57,25 +61,38 @@ public class UnityPlayerHooks {
             }
         }
 
-        Pine.hook(constructor, new MethodHook() {
-            Activity activity = null;
+        for (Constructor<?> constructor : constructors) {
+            Log.i(TAG, "Hooking constructor: " + constructor);
+            Pine.hook(constructor, new MethodHook() {
+                Activity activity = null;
 
-            @Override
-            public void beforeCall(Pine.CallFrame callFrame) {
-                activity = (Activity) callFrame.args[1];
-                callFrame.args[0] = new CustomContextWrapper(gameContext, activity, activity);
-            }
-
-            @Override
-            public void afterCall(Pine.CallFrame callFrame) {
-                for (Field field : activityFields) {
+                @Override
+                public void beforeCall(Pine.CallFrame callFrame) {
                     try {
-                        field.set(callFrame.thisObject, activity);
-                    } catch (IllegalAccessException e) {
-                        throw new RuntimeException("Failed to set activity field: " + field.getName(), e);
+                        // In UnityPlayerHooks beforeCall:
+                        Log.i("UnityPlayerHooks", "Constructor firing, context class: "
+                                + callFrame.args[0].getClass().getName());
+                        activity = (Activity) callFrame.args[0];
+                        callFrame.args[0] = new CustomContextWrapper(gameContext, activity, activity);
+                    } catch (Exception e) {
+                        Log.i(TAG, "Failed to wrap context!", e);
                     }
                 }
-            }
-        });
+
+                @Override
+                public void afterCall(Pine.CallFrame callFrame) {
+                    if (activity == null) {
+                        return;
+                    }
+                    for (Field field : activityFields) {
+                        try {
+                            field.set(callFrame.thisObject, activity);
+                        } catch (IllegalAccessException e) {
+                            throw new RuntimeException("Failed to set activity field: " + field.getName(), e);
+                        }
+                    }
+                }
+            });
+        }
     }
 }
