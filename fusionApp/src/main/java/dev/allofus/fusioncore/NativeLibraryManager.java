@@ -12,9 +12,16 @@ import top.canyie.pine.callback.MethodHook;
 public class NativeLibraryManager {
     private static final String TAG = "NativeLibraryManager";
 
+    private static final ArrayList<String> FusionLibraries = new ArrayList<>();
+
     private static final ArrayList<String> GameLibraries = new ArrayList<>();
 
     private static final ArrayList<String> DataLibraries = new ArrayList<>();
+
+    public static void addFusionLibrary(String fusionLibName)
+    {
+        FusionLibraries.add(fusionLibName);
+    }
 
     public static void addGameLibrary(String gameLibName)
     {
@@ -40,6 +47,13 @@ public class NativeLibraryManager {
                 var libName = callFrame.args[0].toString();
 
                 Log.i(TAG, "beforeFindLibrary " + libName);
+
+                for (String fusionLib : FusionLibraries) {
+                    if (Objects.equals(libName, fusionLib)) {
+                        callFrame.setResult(config.appLibraryDirectory + "/lib" + libName + ".so");
+                        return;
+                    }
+                }
 
                 for (String dataLib : DataLibraries) {
                     if (Objects.equals(libName, dataLib)) {

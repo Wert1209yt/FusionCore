@@ -278,8 +278,9 @@ public class BootstrapActivity extends Activity {
 
         try {
             FusionConfig config = prepared.config;
-            System.loadLibrary("main");
 
+            NativeLibraryManager.addFusionLibrary("main");
+            NativeLibraryManager.addFusionLibrary("fusion");
             NativeLibraryManager.addDataLibrary("il2cpp");
             NativeLibraryManager.addDataLibrary("unity");
             NativeLibraryManager.setupLibraryHooks(config);
