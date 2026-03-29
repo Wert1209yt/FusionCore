@@ -43,7 +43,7 @@ public class NativeLibraryManager {
 
                 for (String dataLib : DataLibraries) {
                     if (Objects.equals(libName, dataLib)) {
-                        callFrame.setResult(config.appInternalDataDirectory + "/lib" + libName + ".so");
+                        callFrame.setResult(config.appDataDirectory + "/lib" + libName + ".so");
                         return;
                     }
                 }

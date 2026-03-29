@@ -74,7 +74,7 @@ extern "C" JNIEXPORT void JNICALL loadFusion(
 
     // Construct paths to the game and app libraries
     fs::path gameLibsPath(config.gameLibraryDirectory);
-    fs::path appInternalDataPath(config.appInternalDataDirectory);
+    fs::path appDataPath(config.appDataDirectory);
 
     fs::path libIl2Cpp = gameLibsPath / "libil2cpp.so";
     fs::path libUnity;
@@ -84,7 +84,7 @@ extern "C" JNIEXPORT void JNICALL loadFusion(
         libUnity = gameLibsPath / "libunity.so";
     } else
     {
-        libUnity = appInternalDataPath / "libunity.so";
+        libUnity = appDataPath / "libunity.so";
     }
 
     // fix unstripped libunity problems
@@ -92,7 +92,7 @@ extern "C" JNIEXPORT void JNICALL loadFusion(
     try_hook_libunity(libUnityPath, (gameLibsPath / "libunity.so").string());
 
     // construct path for our patched libil2cpp copy
-    fs::path patchedLibIl2Cpp = fs::path(config.appInternalDataDirectory) / "libil2cpp.so";
+    fs::path patchedLibIl2Cpp = appDataPath / "libil2cpp.so";
 
     // inject a 1MB pool for our hooks to use for code generation and trampoline storage
     allocate_setup_injected(libIl2Cpp.c_str(), patchedLibIl2Cpp.c_str(), 1024 * 1024);

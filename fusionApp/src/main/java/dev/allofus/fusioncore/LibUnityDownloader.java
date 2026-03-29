@@ -145,7 +145,7 @@ public final class LibUnityDownloader {
 
             Log.i(TAG, "Successfully downloaded libunity to " + outputLibUnity.getAbsolutePath());
             return true;
-        } catch (IOException e) {
+        } catch (Exception e) {
             Log.e(TAG, "Failed to download libunity", e);
             return false;
         } finally {

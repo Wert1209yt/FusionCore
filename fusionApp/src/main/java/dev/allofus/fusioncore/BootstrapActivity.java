@@ -94,7 +94,6 @@ public class BootstrapActivity extends Activity {
             var launcherClass = gameContext.getClassLoader().loadClass(launcherClassName);
 
             var intent = new Intent(this, launcherClass);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
             startActivity(intent);
 
             finish();
@@ -186,7 +185,7 @@ public class BootstrapActivity extends Activity {
                 useOriginalLibUnity = true;
             } else {
                 Log.i(TAG, "Determined Unity version: " + version);
-                if (LibUnityDownloader.downloadAndCacheSafely(launcherActivity.getFilesDir(), version)) {
+                if (LibUnityDownloader.downloadAndCacheSafely(appDataDir, version)) {
                     Log.i(TAG, "Successfully downloaded libunity for version " + version);
                 } else {
                     Log.e(TAG, "Failed to download libunity for version " + version + ", falling back to original.");
@@ -204,7 +203,6 @@ public class BootstrapActivity extends Activity {
                     gameLibDir,
                     appLibDir,
                     appDataDir.getAbsolutePath(),
-                    launcherActivity.getFilesDir().getAbsolutePath(),
                     bepInExDir.getAbsolutePath(),
                     dotnetDir.getAbsolutePath(),
                     copiedData.getAbsolutePath(),

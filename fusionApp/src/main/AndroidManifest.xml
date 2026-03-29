@@ -42,6 +42,10 @@
         <action android:name="android.intent.action.MAIN" />
       </intent-filter>
     </activity>
-    <activity android:name="dev.allofus.fusioncore.BootstrapActivity" android:theme="@style/UnityThemeSelector" android:launchMode="singleTask" android:exported="true" />
+    <activity
+        android:name="dev.allofus.fusioncore.BootstrapActivity"
+        android:theme="@style/UnityThemeSelector"
+        android:launchMode="singleTask"
+        android:exported="false" />
   </application>
 </manifest>
