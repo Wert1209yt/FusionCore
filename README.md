@@ -16,18 +16,26 @@ There is no Lemon/Melonloader support yet, just BepInEx Fusion (my custom fork o
 
 FusionCore automatically detects Unity version, then downloads the unstripped libunity.so file. You only need to follow the configuration steps below to make things work.
 
+## Can you add support for "X" game?
+
+Make a new issue with the following information:
+- Game name and version
+- Android package name (e.g. `com.example.game`)
+- Unity version (if known, otherwise I can check it myself)
+- Any other relevant information (e.g. if the game uses a custom UnityPlayerActivity, or if it has anti-cheat)
+
+We will try to add support, but there are no guarantees. If you want to help, you can also submit a pull request with the necessary changes to support the game.
+
 ## Configuration
 
-1. Replace `unity-classes.jar` in `unityLibrary/libs` with the `classes.jar` from the exact Unity version used by the target game.
-   - Unity path example: `{Unity Install Path}\Editor\Data\PlaybackEngines\AndroidPlayer\Variations\il2cpp\Release\Classes\classes.jar`
-
-2. Set the target package in `unityLibrary/src/main/java/com/unity3d/player/UnityPlayerActivity.java`:
+1. Set the target package in `unityLibrary/src/main/java/dev/allofus/fusioncore/BootstrapActivity.java`:
    - `TARGET_GAME`
 
-3. Add/update `<queries><package ... /></queries>` in `unityLibrary/src/main/AndroidManifest.xml` for your target package.
+2. Add/update `<queries><package ... /></queries>` in `unityLibrary/src/main/AndroidManifest.xml` for your target package.
    - Android package visibility rules require this for package context lookup.
 
-4. Fix Unity-version-specific compile/runtime differences as needed. To help with this, you can export an empty Unity project using the Editor for your version and use it as a reference.
+3. If the game uses a custom UnityPlayerActivity, add that to the `AndroidManifest.xml`.
+   - You can clone the existing activity declaration and change the name to match the game's custom activity.
 
 ## Build
 
