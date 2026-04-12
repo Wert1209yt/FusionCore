@@ -1,6 +1,5 @@
 package dev.allofus.fusioncore;
 
-import android.os.Build;
 import android.util.Log;
 
 import java.io.BufferedInputStream;
@@ -31,14 +30,11 @@ public final class LibUnityDownloader {
         void onDownloadFinished(boolean success, boolean usedCache);
     }
 
-    public static boolean downloadAndCacheSafely(File outputDir, String version) {
-        return downloadAndCacheSafely(outputDir, version, null);
-    }
-
     public static boolean downloadAndCacheSafely(File outputDir,
                                                  String version,
+                                                 String targetGameAbi,
                                                  DownloadProgressListener progressListener) {
-        FutureTask<Boolean> task = new FutureTask<>(() -> downloadAndCache(outputDir, version, progressListener));
+        FutureTask<Boolean> task = new FutureTask<>(() -> downloadAndCache(outputDir, version, targetGameAbi, progressListener));
         Thread worker = new Thread(task, "FusionCore-LibUnityDownload");
         worker.start();
 
@@ -54,12 +50,9 @@ public final class LibUnityDownloader {
         }
     }
 
-    public static boolean downloadAndCache(File outputDir, String version) {
-        return downloadAndCache(outputDir, version, null);
-    }
-
     public static boolean downloadAndCache(File outputDir,
                                            String version,
+                                           String targetGameAbi,
                                            DownloadProgressListener progressListener) {
         if (outputDir == null || version == null || version.trim().isEmpty()) {
             Log.e(TAG, "downloadAndCache called with invalid arguments");
@@ -73,8 +66,9 @@ public final class LibUnityDownloader {
             return false;
         }
 
-        if (Build.SUPPORTED_ABIS == null || Build.SUPPORTED_ABIS.length == 0) {
-            Log.e(TAG, "No supported ABIs detected on this device");
+        String currentAbi = normalizeAbiForDownload(targetGameAbi);
+        if (currentAbi == null) {
+            Log.e(TAG, "Target game ABI is missing or unsupported: " + targetGameAbi);
             notifyDownloadFinished(progressListener, false, false);
             return false;
         }
@@ -83,7 +77,6 @@ public final class LibUnityDownloader {
         File tempOutputLibUnity = new File(outputDir, "libunity.so.download");
         File tempZipFile = new File(outputDir, "libunity.so.zip.download");
         File cacheMetaFile = new File(outputDir, LIBUNITY_CACHE_META_FILE);
-        String currentAbi = Build.SUPPORTED_ABIS[0];
         String trimmedVersion = version.trim();
         String downloadVersion = normalizeVersionForDownload(trimmedVersion);
         String cacheKey = downloadVersion + "|" + currentAbi;
@@ -281,6 +274,44 @@ public final class LibUnityDownloader {
             return matcher.group(1);
         }
         return version;
+    }
+
+    private static String normalizeAbiForDownload(String abiValue) {
+        if (abiValue == null) {
+            return null;
+        }
+
+        String normalized = abiValue.trim().toLowerCase();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+
+        int slash = normalized.lastIndexOf('/');
+        if (slash >= 0 && slash < normalized.length() - 1) {
+            normalized = normalized.substring(slash + 1);
+        }
+
+        int backslash = normalized.lastIndexOf('\\');
+        if (backslash >= 0 && backslash < normalized.length() - 1) {
+            normalized = normalized.substring(backslash + 1);
+        }
+
+        switch (normalized) {
+            case "arm64":
+            case "aarch64":
+            case "arm64-v8a":
+                return "arm64-v8a";
+            case "armeabi-v7a":
+            case "armeabi":
+            case "armv7":
+                return "armeabi-v7a";
+/*            case "x86":
+                return "x86";
+            case "x86_64":
+                return "x86_64"; */
+        }
+
+        return null;
     }
 }
 

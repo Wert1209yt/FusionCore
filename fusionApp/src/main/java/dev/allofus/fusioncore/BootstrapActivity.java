@@ -13,9 +13,14 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.File;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import dalvik.system.BaseDexClassLoader;
+import dalvik.system.DexClassLoader;
 
 import top.canyie.pine.Pine;
 import top.canyie.pine.callback.MethodHook;
@@ -29,7 +34,7 @@ public class BootstrapActivity extends Activity {
 
     private final AtomicBoolean hookInstalled = new AtomicBoolean(false);
     private final AtomicBoolean fusionInitialized = new AtomicBoolean(false);
-    private final AtomicBoolean nativeLibsLoaded = new AtomicBoolean(false);
+    private final AtomicBoolean hostDexInjected = new AtomicBoolean(false);
 
     private TextView statusView;
     private TextView progressDetailsView;
@@ -90,6 +95,14 @@ public class BootstrapActivity extends Activity {
             return;
         }
 
+        try {
+            graftHostDexIntoGameClassLoader(gameContext.getClassLoader());
+            preloadCryptoClasses(gameContext.getClassLoader());
+        } catch (Throwable t) {
+            failAndFinish("Failed to inject host dex into game class loader", t);
+            return;
+        }
+
         setPhaseStatus(getString(R.string.bootstrap_status_installing_hooks));
         try {
             ClassLoaderHooks.installHooks(gameContext.getClassLoader());
@@ -100,7 +113,7 @@ public class BootstrapActivity extends Activity {
         }
 
         final String launcherClassName = launcher.getClassName();
-        if (!installLauncherOnCreateHook(gameContext, launcherClassName,
+        if (!installLauncherOnCreateHook(gameContext.getClassLoader(), launcherClassName,
                 (launcherActivity, bundle) -> initializeFusion(launcherActivity, targetPackage))) {
             failAndFinish("Failed to install launcher hook! See log for details.", null);
             return;
@@ -218,7 +231,7 @@ public class BootstrapActivity extends Activity {
         void run(Activity launcherActivity, Bundle bundle);
     }
 
-    private boolean installLauncherOnCreateHook(Context gameContext,
+    private boolean installLauncherOnCreateHook(ClassLoader gameClassLoader,
                                                 String launcherClassName,
                                                 BeforeOnCreateAction action) {
         if (hookInstalled.get()) {
@@ -226,7 +239,7 @@ public class BootstrapActivity extends Activity {
         }
 
         try {
-            Class<?> launcherClass = Class.forName(launcherClassName, false, gameContext.getClassLoader());
+            Class<?> launcherClass = Class.forName(launcherClassName, false, gameClassLoader);
             Method onCreateMethod = Utilities.findOnCreateMethod(launcherClass);
             onCreateMethod.setAccessible(true);
 
@@ -285,8 +298,8 @@ public class BootstrapActivity extends Activity {
             NativeLibraryManager.addDataLibrary("unity");
             NativeLibraryManager.setupLibraryHooks(config);
 
-            loadNativeLibraries();
-            ActivityBridge.loadFusion(config);
+            File stagedConfig = FusionConfigStore.write(this, config);
+            Log.i(TAG, "Fusion config staged at " + stagedConfig.getAbsolutePath());
         } catch (Throwable t) {
             Log.e(TAG, "Failed to initialize Fusion in launcher beforeCall", t);
         }
@@ -298,6 +311,7 @@ public class BootstrapActivity extends Activity {
                                                    boolean useOriginalLibUnity) {
         String gameLibDir = gameContext.getApplicationInfo().nativeLibraryDir;
         String appLibDir = appContext.getApplicationInfo().nativeLibraryDir;
+        String targetGameAbi = resolveTargetGameAbi(gameLibDir);
         File appDataDir = new File(appContext.getFilesDir(), targetPackage);
 
         setPhaseStatus(getString(R.string.bootstrap_status_copy_assets));
@@ -315,7 +329,7 @@ public class BootstrapActivity extends Activity {
             useOriginalLibUnity = true;
         } else {
             Log.i(TAG, "Determined Unity version: " + version);
-            if (LibUnityDownloader.downloadAndCacheSafely(appDataDir, version, new LibUnityDownloader.DownloadProgressListener() {
+            if (LibUnityDownloader.downloadAndCacheSafely(appDataDir, version, targetGameAbi, new LibUnityDownloader.DownloadProgressListener() {
                 @Override
                 public void onDownloadStarted(String url, long totalBytes) {
                     setDownloadStatus(0L, totalBytes);
@@ -331,9 +345,9 @@ public class BootstrapActivity extends Activity {
                     // No-op: next phase status is set by prepareFusionState.
                 }
             })) {
-                Log.i(TAG, "Successfully downloaded libunity for version " + version);
+                Log.i(TAG, "Successfully downloaded libunity for version " + version + " and ABI " + targetGameAbi);
             } else {
-                Log.e(TAG, "Failed to download libunity for version " + version + ", falling back to original.");
+                Log.e(TAG, "Failed to download libunity for version " + version + " and ABI " + targetGameAbi + ", falling back to original.");
                 useOriginalLibUnity = true;
             }
         }
@@ -383,19 +397,80 @@ public class BootstrapActivity extends Activity {
         }
     }
 
-    private void loadNativeLibraries() {
-        if (!nativeLibsLoaded.compareAndSet(false, true)) {
+    private String resolveTargetGameAbi(String gameLibDir) {
+        if (gameLibDir == null || gameLibDir.isEmpty()) {
+            return null;
+        }
+
+        String abi = new File(gameLibDir).getName();
+        if (abi.isEmpty()) {
+            return null;
+        }
+
+        return abi;
+    }
+
+    private void graftHostDexIntoGameClassLoader(ClassLoader gameClassLoader) throws Exception {
+        if (!hostDexInjected.compareAndSet(false, true)) {
             return;
         }
 
-        System.loadLibrary("System.Native");
-        System.loadLibrary("System.Globalization.Native");
-        System.loadLibrary("System.IO.Compression.Native");
-        System.loadLibrary("System.Security.Cryptography.Native.Android");
-        System.loadLibrary("clrjit");
-        System.loadLibrary("mscordbi");
-        System.loadLibrary("mscordaccore");
-        System.loadLibrary("coreclr");
-        System.loadLibrary("fusion");
+        if (!(gameClassLoader instanceof BaseDexClassLoader)) {
+            throw new IllegalStateException("Game class loader is not a BaseDexClassLoader: " + gameClassLoader);
+        }
+
+        String hostSourceDir = getApplicationInfo().sourceDir;
+        File optimizedDir = new File(getCodeCacheDir(), "hostdex");
+        if (!optimizedDir.exists() && !optimizedDir.mkdirs()) {
+            throw new IllegalStateException("Failed to create host dex optimization directory: " + optimizedDir);
+        }
+
+        DexClassLoader hostDexLoader = new DexClassLoader(
+                hostSourceDir,
+                optimizedDir.getAbsolutePath(),
+                null,
+                gameClassLoader.getParent()
+        );
+
+        Field pathListField = BaseDexClassLoader.class.getDeclaredField("pathList");
+        pathListField.setAccessible(true);
+
+        Object gamePathList = pathListField.get(gameClassLoader);
+        Object hostPathList = pathListField.get(hostDexLoader);
+
+        Field dexElementsField = gamePathList.getClass().getDeclaredField("dexElements");
+        dexElementsField.setAccessible(true);
+
+        Object gameElements = dexElementsField.get(gamePathList);
+        Object hostElements = dexElementsField.get(hostPathList);
+
+        int gameLen = Array.getLength(gameElements);
+        int hostLen = Array.getLength(hostElements);
+        Object merged = Array.newInstance(gameElements.getClass().getComponentType(), gameLen + hostLen);
+
+        for (int i = 0; i < gameLen; i++) {
+            Array.set(merged, i, Array.get(gameElements, i));
+        }
+        for (int i = 0; i < hostLen; i++) {
+            Array.set(merged, gameLen + i, Array.get(hostElements, i));
+        }
+
+        dexElementsField.set(gamePathList, merged);
+        Log.i(TAG, "Injected host dex into game class loader; gameElements=" + gameLen + " hostElements=" + hostLen);
     }
+
+    private void preloadCryptoClasses(ClassLoader gameClassLoader) throws ClassNotFoundException {
+        String[] cryptoClasses = new String[] {
+                "net.dot.android.crypto.DotnetX509KeyManager",
+                "net.dot.android.crypto.DotnetProxyTrustManager",
+                "net.dot.android.crypto.PalPbkdf2"
+        };
+
+        for (String className : cryptoClasses) {
+            Class<?> clazz = Class.forName(className, true, gameClassLoader);
+            Log.i(TAG, "Preloaded crypto class via game loader: " + className + " loader=" + clazz.getClassLoader());
+        }
+    }
+
+    // Native runtime now boots from libmain inside Unity NativeLoader namespace.
 }
