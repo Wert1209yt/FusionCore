@@ -115,7 +115,7 @@ PaddedOpenResult padded_dlopen(const char *library_name,
     }
 
     Dl_info info;
-    dladdr(dlsym(handle, "JNI_OnLoad"), &info);
+    dladdr(dlsym(handle, "start"), &info);
     size_t trampoline_base = reinterpret_cast<uintptr_t>(info.dli_fbase) + pool_offset;
 
     return {handle, info.dli_fbase, trampoline_base, new_pool_size};
