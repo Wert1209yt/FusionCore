@@ -319,29 +319,32 @@ public class BootstrapActivity extends Activity {
             Log.e(TAG, "Failed to determine Unity version! BepInEx may not work correctly.");
             version = BACKUP_UNITY_VERSION;
             useOriginalLibUnity = true;
+        } else if (useOriginalLibUnity) {
+            Log.i(TAG, "Skipping libunity download");
+            useOriginalLibUnity = true;
         } else {
             Log.i(TAG, "Determined Unity version: " + version);
             if (LibUnityDownloader.downloadAndCacheSafely(appDataDir, version, targetGameAbi, new LibUnityDownloader.DownloadProgressListener() {
-                @Override
-                public void onDownloadStarted(String url, long totalBytes) {
-                    setDownloadStatus(0L, totalBytes);
-                }
-
-                @Override
-                public void onDownloadProgress(long downloadedBytes, long totalBytes) {
-                    setDownloadStatus(downloadedBytes, totalBytes);
-                }
-
-                @Override
-                public void onDownloadFinished(boolean success, boolean usedCache) {
-                    // No-op: next phase status is set by prepareFusionState.
-                }
-            })) {
-                Log.i(TAG, "Successfully downloaded libunity for version " + version + " and ABI " + targetGameAbi);
-            } else {
-                Log.e(TAG, "Failed to download libunity for version " + version + " and ABI " + targetGameAbi + ", falling back to original.");
-                useOriginalLibUnity = true;
+            @Override
+            public void onDownloadStarted(String url, long totalBytes) {
+                setDownloadStatus(0L, totalBytes);
             }
+
+            @Override
+            public void onDownloadProgress(long downloadedBytes, long totalBytes) {
+                setDownloadStatus(downloadedBytes, totalBytes);
+            }
+
+            @Override
+            public void onDownloadFinished(boolean success, boolean usedCache) {
+                // No-op: next phase status is set by prepareFusionState.
+            }
+        })) {
+            Log.i(TAG, "Successfully downloaded libunity for version " + version + " and ABI " + targetGameAbi);
+        } else {
+            Log.e(TAG, "Failed to download libunity for version " + version + " and ABI " + targetGameAbi + ", falling back to original.");
+                useOriginalLibUnity = true;
+            }       
         }
 
         setPhaseStatus(getString(R.string.bootstrap_status_extracting_runtime));
