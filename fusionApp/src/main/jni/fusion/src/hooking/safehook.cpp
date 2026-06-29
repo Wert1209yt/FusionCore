@@ -31,13 +31,17 @@ static void *bridge_function = nullptr;
 // the handle of libil2cpp.so
 static void *library_handle = nullptr;
 
+// the size of libil2cpp.so
+static size_t library_size = 0;
+
 // the base address of libil2cpp.so
 static uintptr_t library_base = 0;
 
 // a function used to allocate code trampolines.
 static allocate_func allocator = nullptr;
 
-bool safehook_initialize(void *lib_handle, uintptr_t lib_base, allocate_func allocator_func)
+bool safehook_initialize(void *lib_handle, uintptr_t lib_base, size_t lib_size, allocate_func
+allocator_func)
 {
     if (!lib_handle)
     {
@@ -53,6 +57,7 @@ bool safehook_initialize(void *lib_handle, uintptr_t lib_base, allocate_func all
 
     library_handle = lib_handle;
     library_base = lib_base;
+    library_size = lib_size;
     allocator = allocator_func;
 
     log_format(LogLevel::INFO, TAG, "SafeHook initialized using base 0x{:X}",
@@ -110,8 +115,8 @@ void *dobby_hook(void *target, void *hook, bool use_near_branch = false)
     if (error != 0)
     {
         void *offset = reinterpret_cast<void *>(
-                reinterpret_cast<uintptr_t>(target) -
-                reinterpret_cast<uintptr_t>(library_base)
+                reinterpret_cast<uint64_t>(target) -
+                reinterpret_cast<uint64_t>(library_base)
         );
         log_format(LogLevel::ERROR, TAG, "Failed to hook target at target 0x{:X} & offset 0x{:X}, error {}",
                    reinterpret_cast<uintptr_t>(target), reinterpret_cast<uintptr_t>(offset), error);
@@ -133,7 +138,7 @@ bool protect_trampoline(void *trampoline, size_t size, int protection)
         return false;
     }
 
-    auto start = reinterpret_cast<uintptr_t>(trampoline);
+    auto start = reinterpret_cast<uint64_t>(trampoline);
     auto start_page = align_down(start, page_size);
     auto end = start + size - 1;
     auto last_page = align_down(end, page_size);
@@ -203,7 +208,7 @@ void *bridge_hook(void *target_function, void *hook_function)
     }
 
     // The bridge function will store X8 into TLS,
-    // then jump to the pointer in X10, which we will set to the hook function pointer.
+    // then jump to the pointer in X16, which we will set to the hook function pointer.
     if (!bridge_function)
     {
         log(LogLevel::ERROR, TAG,
@@ -212,7 +217,8 @@ void *bridge_hook(void *target_function, void *hook_function)
     }
 
     log_format(LogLevel::DEBUG, TAG,
-                      "Emitting jump from trampoline at 0x{:X} to bridge at 0x{:X} with hook pointer in X10",
+                      "Emitting jump from trampoline at 0x{:X} to bridge at 0x{:X} with hook "
+                      "pointer in X16",
                       reinterpret_cast<uintptr_t>(trampoline), reinterpret_cast<uintptr_t>(bridge_function));
 
     // Write the pointer of hook to correct register, then jump to the return buffer bridge
@@ -240,7 +246,7 @@ void *bridge_hook(void *target_function, void *hook_function)
     literal[0] = reinterpret_cast<uint64_t>(hook_function);
     literal[1] = reinterpret_cast<uint64_t>(bridge_function);
 
-    auto start = reinterpret_cast<uintptr_t>(trampoline);
+    auto start = reinterpret_cast<uint64_t>(trampoline);
     __builtin___clear_cache(reinterpret_cast<char *>(start),
                             reinterpret_cast<char *>(start + requiredSize));
 
@@ -273,16 +279,14 @@ void *safehook_create_hook(void *target_function, void *hook_function, bool use_
         return nullptr;
     }
 
-    // offset within libil2cpp.so
-    uintptr_t rva = reinterpret_cast<uintptr_t>(target_function) -
-                    reinterpret_cast<uintptr_t>(library_base);
+    auto rva = reinterpret_cast<uintptr_t>(target_function) - library_base;
 
     // distance from hook function
-    uintptr_t distance = reinterpret_cast<uintptr_t>(hook_function) -
-                         reinterpret_cast<uintptr_t>(target_function);
+    int64_t distance = reinterpret_cast<int64_t>(hook_function) -
+                         reinterpret_cast<int64_t>(target_function);
 
     // check if hook is close enough for a near branch.
-    uintptr_t limit = 0x7FFFFFFF;
+    uint64_t limit = 0x7FFFFFFF;
     bool withinLimits = (distance > 0 && distance < limit) ||
                         (distance < 0 && distance > -limit);
 
@@ -300,14 +304,13 @@ void *safehook_create_hook(void *target_function, void *hook_function, bool use_
         }
     }
 
-    // TODO: better check if function is actually inside libil2cpp.so
-    if (rva < 0)
+    // check if target function is inside libil2cpp.so
+    if (rva >= library_size)
     {
-        // function does not belong to libil2cpp.so
-        log_format(LogLevel::DEBUG, TAG,
-                          "Target at offset 0x{:X} is outside of library bounds, using Dobby directly.",
-                          rva);
-        return dobby_hook(target_function, actual_hook, withinLimits);
+        log_format(LogLevel::WARN, TAG,
+                   "Target function at offset 0x{:X} is outside of library bounds (base 0x{:X}, size 0x{:X}), using Dobby directly.",
+                   rva, reinterpret_cast<uintptr_t>(library_base), library_size);
+        return dobby_hook(target_function, actual_hook);
     }
 
     if (withinLimits)
@@ -351,11 +354,11 @@ void *safehook_create_hook(void *target_function, void *hook_function, bool use_
 
         log_format(LogLevel::DEBUG, TAG,
                           "Emitting absolute jump from trampoline at 0x{:X} to hook at 0x{:X}",
-                          reinterpret_cast<uintptr_t>(trampoline), reinterpret_cast<uintptr_t>(actual_hook));
+                          reinterpret_cast<uint64_t>(trampoline), reinterpret_cast<uint64_t>(actual_hook));
 
         log_format(LogLevel::DEBUG, TAG, "Trampoline offset from library base: 0x{:X}",
-                          reinterpret_cast<uintptr_t>(trampoline) -
-                          reinterpret_cast<uintptr_t>(library_base));
+                          reinterpret_cast<uint64_t>(trampoline) -
+                          reinterpret_cast<uint64_t>(library_base));
 
         bool success = emit_absolute_jump(trampoline, actual_hook);
         if (!success)
@@ -365,7 +368,7 @@ void *safehook_create_hook(void *target_function, void *hook_function, bool use_
         }
 
         // we need to clear instruction cache to make sure our hook works.
-        auto start = reinterpret_cast<uintptr_t>(trampoline);
+        auto start = reinterpret_cast<uint64_t>(trampoline);
         __builtin___clear_cache(reinterpret_cast<char *>(start),
                                 reinterpret_cast<char *>(start + trampoline_size));
 
@@ -393,8 +396,8 @@ void safehook_destroy_hook(void *target)
     }
 
     void *offset = reinterpret_cast<void *>(
-            reinterpret_cast<uintptr_t>(target) -
-            reinterpret_cast<uintptr_t>(library_base)
+            reinterpret_cast<uint64_t>(target) -
+            reinterpret_cast<uint64_t>(library_base)
     );
 
     if (DobbyDestroy(target) != 0)

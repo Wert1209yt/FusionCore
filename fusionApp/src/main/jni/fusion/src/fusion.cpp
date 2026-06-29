@@ -218,7 +218,8 @@ extern "C" bool fusion_bootstrap_from_libmain(JNIEnv *env)
         return false;
     }
 
-    if (!safehook_initialize(il2cpp_get_handle(), il2cpp_get_library_base(), allocate_injected))
+    auto library_size = reinterpret_cast<size_t>(get_injected_pool_base() - il2cpp_get_library_base());
+    if (!safehook_initialize(il2cpp_get_handle(), il2cpp_get_library_base(), library_size, allocate_injected))
     {
         log(LogLevel::ERROR, TAG, "Failed to initialize SafeHook");
         return false;

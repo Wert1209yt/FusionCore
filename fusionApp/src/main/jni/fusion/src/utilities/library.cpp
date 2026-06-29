@@ -48,8 +48,8 @@ PaddedOpenResult padded_dlopen(const char *library_name,
     }
 
     // Find the last program segment and the base vaddr
-    Elf_Phdr *last_phdr = &phdrs[0];
-    Elf_Addr base_vaddr = 0xFFFFFFFF;
+    Elf_Phdr *last_phdr = nullptr;
+    Elf_Addr base_vaddr = ~static_cast<Elf_Addr>(0);
 
     for (int i = 0; i < elf_header.e_phnum; ++i)
     {
@@ -57,7 +57,7 @@ PaddedOpenResult padded_dlopen(const char *library_name,
         if (ph.p_type == PT_LOAD)
         {
             base_vaddr = std::min(base_vaddr, ph.p_vaddr);
-            if (ph.p_vaddr + ph.p_memsz > last_phdr->p_vaddr + last_phdr->p_memsz)
+            if (!last_phdr || (ph.p_vaddr + ph.p_memsz > last_phdr->p_vaddr + last_phdr->p_memsz))
             {
                 last_phdr = &phdrs[i];
             }
@@ -114,9 +114,30 @@ PaddedOpenResult padded_dlopen(const char *library_name,
         return {nullptr, nullptr, 0, 0};
     }
 
+    static constexpr const char* sym_lookup[] = {"il2cpp_init", "start", "JNI_OnLoad"};
     Dl_info info;
-    dladdr(dlsym(handle, "start"), &info);
-    size_t trampoline_base = reinterpret_cast<uintptr_t>(info.dli_fbase) + pool_offset;
 
+    void *sym_addr = nullptr;
+    for (const auto& sym : sym_lookup) {
+        sym_addr = dlsym(handle, sym);
+        if (sym_addr) {
+            break;
+        }
+    }
+
+    if (!sym_addr) {
+        log_format(LogLevel::ERROR, TAG, "Failed to find any known symbol in {}: {}", temp_path, dlerror());
+        dlclose(handle);
+        return {nullptr, nullptr, 0, 0};
+    }
+
+    dladdr(sym_addr, &info);
+    if (!info.dli_fbase) {
+        log_format(LogLevel::ERROR, TAG, "dladdr failed for symbol in {}: {}", temp_path, dlerror());
+        dlclose(handle);
+        return {nullptr, nullptr, 0, 0};
+    }
+
+    size_t trampoline_base = reinterpret_cast<uintptr_t>(info.dli_fbase) + pool_offset;
     return {handle, info.dli_fbase, trampoline_base, new_pool_size};
 }
