@@ -2,8 +2,8 @@ name: Build Android App
 
 on:
   push:
-    branches: [ "main", "master" ] # Запускать при пушах в эти ветки
-  workflow_dispatch: # Позволяет запускать сборку вручную кнопкой
+    branches: [ "main", "master" ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -19,6 +19,11 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
         cache: gradle
+
+    # Установка конкретной версии CMake, которую требует проект
+    - name: Install required CMake version
+      run: |
+        echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.31.1"
 
     - name: Grant Execute Permission for Gradlew
       run: chmod +x gradlew
